@@ -1,0 +1,160 @@
+import 'dart:developer';
+
+import 'package:first_app/providerData.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+//provider                       логика сработает но без отображения
+//provider.value
+class Complex {
+  var valueOne = 0;
+  var valueTwo = 0;
+}
+
+class Model extends ChangeNotifier {
+  var one = 0;
+  var sumComplex = 0;
+  var two = 0;
+  final complex = Complex();
+
+  void incr1() {
+    one += 1;
+    notifyListeners();
+  }
+
+  void incr2() {
+    two += 1;
+    notifyListeners();
+  }
+
+  void inFComplex1() {
+    complex.valueOne += 1;
+    complex.valueTwo += 1;
+
+    notifyListeners();
+  }
+
+  void inFComplexSum() {
+    sumComplex = complex.valueOne + complex.valueTwo;
+    notifyListeners();
+  }
+}
+
+class ForExample extends ChangeNotifier {
+  var one = 0;
+
+  void exaIncr() {
+    one += 1;
+    notifyListeners();
+  }
+}
+
+class Wrapper {
+  final Model model;
+  final ForExample forExample;
+
+  Wrapper(this.model, this.forExample);
+}
+
+class ExampleWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => Model()),
+          ChangeNotifierProvider(create: (_) => ForExample()),
+          ProxyProvider2(
+            update: (BuildContext context, Model model, ForExample forExample,
+                    prev) =>
+                Wrapper(model, forExample),
+          )
+        ],
+        child: View(),
+      );
+}
+
+class View extends StatelessWidget {
+  const View({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.read<Model>();
+    final state2 = context.read<ForExample>();
+    return SafeArea(
+      child: Scaffold(
+        body: Container(
+          child: Column(
+            children: [
+              ElevatedButton(onPressed: state.incr1, child: Text('one')),
+              ElevatedButton(onPressed: state2.exaIncr, child: Text('two')),
+              ElevatedButton(
+                  onPressed: state.inFComplex1, child: Text('complex')),
+              ElevatedButton(
+                  onPressed: state.inFComplexSum, child: Text('complexSum')),
+              _OneWidget(),
+              _TwoWidget(),
+              _ThreeWidget(),
+              _FourWidget(),
+              Consumer<Model>(builder: (context, model, _) {
+                return Text('${model.one}');
+              }),
+              Consumer2<Model, ForExample>(
+                  builder: (context, model, forExample, _) {
+                return Column(children: [
+                  Text('${model.one}'),
+                  Text('${forExample.one}'),
+                ]);
+              }),
+              Selector<Model, int>(
+                builder: (context, value, _) {
+                  return Text('$value');
+                },
+                selector: (_, model) => model.one,
+                shouldRebuild: (prev,current) => current-prev>3,
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OneWidget extends StatelessWidget {
+  const _OneWidget({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final value = context.select((Model value) => value.one);
+    return Text("$value");
+  }
+}
+
+class _TwoWidget extends StatelessWidget {
+  const _TwoWidget({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final value = context.select((ForExample value) => value.one);
+    return Text("$value");
+  }
+}
+
+class _ThreeWidget extends StatelessWidget {
+  const _ThreeWidget({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final value = context.select((Model value) => value.complex.valueTwo);
+    return Text("$value");
+  }
+}
+
+class _FourWidget extends StatelessWidget {
+  const _FourWidget({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final value = context.watch<Wrapper>().model.sumComplex;
+    return Text("$value");
+  }
+}
